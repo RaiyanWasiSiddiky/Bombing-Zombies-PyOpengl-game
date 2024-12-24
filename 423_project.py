@@ -12,7 +12,6 @@ from OpenGL.GLU import *
 import math
 import random
 import time
-import numpy as np
 
 R = 0
 G = 0
