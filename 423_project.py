@@ -1,4 +1,6 @@
-# TASK1
+# strange bug where minimizing the window results in collision of zombie with
+# both man and shield, causing shield to lose hp and game over
+# not sure how to fix
 
 from OpenGL.GL import *
 from OpenGL.GLUT import *
@@ -250,7 +252,12 @@ def animate():
                     shield.hp -= 1
                     if shield.hp == 0:
                         shield.box = [-1000, 0, -1000, 0]
+                        # game_over_state = True
+                        # print("GAME OVER")
+                        # print(f'SCORE: {score}')
                 if zombie.box[0] < man.box[0]+man.box[1]:
+                    # strange bug where minimizing the window results in collision of zombie with
+                    # both man and shield, causing shield to lose hp and game over
                     game_over_state = True
                     print("GAME OVER")
                     print(f'SCORE: {score}')
