@@ -16,8 +16,8 @@ import time
 R = 0
 G = 0
 B = 0
-WIDTH = 1200
-HEIGHT = 600
+WIDTH = 1300
+HEIGHT = 700
 
 pause_state = False
 show_bounds = False
@@ -50,12 +50,14 @@ class Pivot:
         self.special = special
         self.speed = speed
 
-pause = Pivot(0, 280)
+pause = Pivot(0, 310)
 resume = Pivot(0, 100)
 restart = Pivot(0, 0)
 exit = Pivot(0, -100)
 man = Pivot(-425, -185)
 shield = Pivot(-350, -185)
+shield.hp = 3
+max_shield = 3
 
 def draw_point(x, y):
     glBegin(GL_POINTS)
@@ -198,7 +200,7 @@ def iterate():
     glViewport(0, 0, WIDTH, HEIGHT)
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
-    glOrtho(-600, 600, -300, 300, 0, 1)
+    glOrtho(-650, 650, -350, 350, 0, 1)
     glMatrixMode (GL_MODELVIEW)
     glLoadIdentity()
 
@@ -209,17 +211,17 @@ def animate():
     current_time = time.time()
     if (current_time - first_time)>=(10): # difficulty
         if pause_state == False and game_over_state == False:
-            if prob<0.1:
+            if prob<0.15:
                 # fast zombies
-                zombie = Pivot(610, -185)
+                zombie = Pivot(660, -185)
                 zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
                 zombie.hp = 1
                 zombie.special = 1
                 zombie.speed = 1
             
-            elif 0.1<prob<0.2:
+            elif 0.15<prob<0.3:
                 # tanky zombies
-                zombie = Pivot(610, -185)
+                zombie = Pivot(660, -185)
                 zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
                 zombie.hp = 2
                 zombie.special = 0
@@ -227,7 +229,7 @@ def animate():
 
             else:
                 # normal zombies
-                zombie = Pivot(610, -185)
+                zombie = Pivot(660, -185)
                 zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
                 zombie.hp = 1
                 zombie.special = 0
@@ -241,6 +243,14 @@ def animate():
 
             if zombie.box[0] < shield.box[0]+shield.box[1]:
                 zombies.remove(zombie)
+                shield.hp -= 1
+                if shield.hp == 0:
+                    shield.box = [-1000, 0, -1000, 0]
+            if zombie.box[0] < man.box[0]+man.box[1]:
+                game_over_state = True
+                print("GAME OVER")
+                print(f'SCORE: {score}')
+                glutLeaveMainLoop()
 
     for bomb in bombs:
         # delx = bomb.vx*(delta_time)
@@ -263,7 +273,7 @@ def animate():
                     zombies.remove(zombie)
                     print(f'SCORE: {score}')
 
-        if bomb.x > 600 or bomb.y < -220:
+        if bomb.x > 650 or bomb.y < -220:
             if bomb in bombs:
                 bombs.remove(bomb)
 
@@ -279,8 +289,8 @@ def animate():
 def mouseMotionListener(x, y):
     global throw_state, man, new_bomb
 
-    mouse_x = x - 600
-    mouse_y = 300 - y
+    mouse_x = x - 650
+    mouse_y = 350 - y
 
     if throw_state == True:
         # print(mouse_x, mouse_y)
@@ -325,8 +335,8 @@ def specialKeyListener(key, x, y):
 def mouseListener(button, state, x, y):   
     global pause, pause_state, resume, restart, exit, throw_state, bombs, new_bomb
 
-    mouse_x = x - 600
-    mouse_y = 300 - y
+    mouse_x = x - 650
+    mouse_y = 350 - y
     # print(mouse_x, mouse_y)
         
     if button==GLUT_RIGHT_BUTTON:
@@ -385,7 +395,7 @@ def mouseListener(button, state, x, y):
     glutPostRedisplay()
 
 def showScreen():
-    global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb, zombies, throw_state
+    global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb, zombies, throw_state, max_shield
 
     # background
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -401,24 +411,32 @@ def showScreen():
 
     # LAND
     glColor3f(255/255, 255/255, 255/255)
-    draw_line(-600, -220, 600, -220)
+    draw_line(-650, -220, 650, -220)
     
 
     # MAN
     glColor3f(255/255, 255/255, 255/255)
     draw_quad(man.x-25, man.y-35, man.x-25, man.y+35, man.x+25, man.y+35, man.x+25, man.y-35)
     glColor3f(63/255, 152/255, 69/255)
-    man.box = [man.x-70, 140, man.y-35, 140]
+    man.box = [man.x-70, 100, man.y-35, 140]
     if show_bounds == True:
         draw_quad(man.box[0], man.box[2], man.box[0], man.box[2]+man.box[3], man.box[0]+man.box[1], man.box[2]+man.box[3], man.box[0]+man.box[1], man.box[2])
 
     # SHIELD
-    glColor3f(255/255, 255/255, 255/255)
-    draw_quad(shield.x-25, shield.y-35, shield.x-25, shield.y+35, shield.x+25, shield.y+35, shield.x+25, shield.y-35)
-    glColor3f(63/255, 152/255, 69/255)
-    shield.box = [shield.x-25, 50, shield.y-35, 70]
-    if show_bounds == True:
-        draw_quad(shield.box[0], shield.box[2], shield.box[0], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2])
+    if shield.hp != 0:
+        glColor3f(255/255, 255/255, 255/255)
+        draw_triangle(shield.x-25, shield.y-35, shield.x+25, shield.y+35, shield.x+25, shield.y-35)
+        draw_quad(shield.x-30, shield.y+40, shield.x-30, shield.y+50, shield.x+30, shield.y+50, shield.x+30, shield.y+40)
+        glPointSize(10)
+        glColor3f(63/255, 152/255, 69/255)
+        # print(shield.x-25, shield.x+(25-((max_shield-shield.hp)*(50/shield.hp))))
+        draw_line(shield.x-25, shield.y+45, shield.x+(25-((max_shield-shield.hp)*(50/max_shield))), shield.y+45)
+        glPointSize(2)
+        glColor3f(255/255, 255/255, 255/255)
+        glColor3f(63/255, 152/255, 69/255)
+        shield.box = [shield.x-25, 50, shield.y-35, 70]
+        if show_bounds == True:
+            draw_quad(shield.box[0], shield.box[2], shield.box[0], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2])
 
     # ZOMBIES
     glColor3f(255/255, 255/255, 255/255)
@@ -505,7 +523,7 @@ def showScreen():
 glutInit()
 glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB)
 glutInitWindowSize(WIDTH, HEIGHT) #window size
-glutInitWindowPosition(180, 100)
+glutInitWindowPosition(110, 55)
 wind = glutCreateWindow(b"423 PROJECT ZOMBBOMBS") #window name
 glutDisplayFunc(showScreen)
 
