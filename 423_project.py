@@ -35,6 +35,9 @@ print(f'SCORE: {score}')
 # delta_time = 0.01
 delta_time = 0.005
 
+difficulty = 0
+time_diff = 0
+
 
 # box = [x, width, y, height]
 # box here basically does the AABB collision functionality using bounding boxes
@@ -205,11 +208,11 @@ def iterate():
     glLoadIdentity()
 
 def animate():
-    global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state, shield, delta_time, score
+    global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state, shield, delta_time, score, difficulty, time_diff
 
     prob = random.random()
     current_time = time.time()
-    if (current_time - first_time)>=(10): # difficulty
+    if (current_time - first_time)>=(10 - difficulty): # difficulty
         if pause_state == False and game_over_state == False:
             if prob<0.15:
                 # fast zombies
@@ -237,52 +240,61 @@ def animate():
             zombies.append(zombie)
             first_time = current_time
 
-    if zombies != []:
-        for zombie in zombies:
-            zombie.x -= zombie.speed
+    if pause_state == False and game_over_state == False:
+        if zombies != []:
+            for zombie in zombies:
+                zombie.x -= zombie.speed
 
-            if zombie.box[0] < shield.box[0]+shield.box[1]:
-                zombies.remove(zombie)
-                shield.hp -= 1
-                if shield.hp == 0:
-                    shield.box = [-1000, 0, -1000, 0]
-            if zombie.box[0] < man.box[0]+man.box[1]:
-                game_over_state = True
-                print("GAME OVER")
-                print(f'SCORE: {score}')
-                glutLeaveMainLoop()
-
-    for bomb in bombs:
-        # delx = bomb.vx*(delta_time)
-        bomb.x += bomb.vx*(delta_time)
-
-        # dely = bomb.vy*(delta_time) - 0.5*9.8*(delta_time)**2
-        bomb.y += bomb.vy*(delta_time)
-        bomb.vy -= 36*9.8*(delta_time)
-
-        for zombie in zombies:
-            if (bomb.box[0] < zombie.box[0] + zombie.box[1]  and
-            bomb.box[0] + bomb.box[1] > zombie.box[0]  and
-            bomb.box[2] < zombie.box[2] + zombie.box[3] and
-            bomb.box[2] + bomb.box[3] > zombie.box[2]):
-                zombie.hp -= 1
-                if bomb in bombs:
-                    bombs.remove(bomb)
-                if zombie.hp == 0:
-                    score += 1
+                if zombie.box[0] < shield.box[0]+shield.box[1]:
                     zombies.remove(zombie)
+                    shield.hp -= 1
+                    if shield.hp == 0:
+                        shield.box = [-1000, 0, -1000, 0]
+                if zombie.box[0] < man.box[0]+man.box[1]:
+                    game_over_state = True
+                    print("GAME OVER")
                     print(f'SCORE: {score}')
 
-        if bomb.x > 650 or bomb.y < -220:
-            if bomb in bombs:
-                bombs.remove(bomb)
 
-        # TBD: BOMB BOUNCE
-        # if bomb.y < -220:
-            # bomb.vy = -0.8*bomb.vy
-            # if bomb.vy < 5:
-            #     if bomb in bombs:
-            #         bombs.remove(bomb)
+        for bomb in bombs:
+            # delx = bomb.vx*(delta_time)
+            bomb.x += bomb.vx*(delta_time)
+
+            # dely = bomb.vy*(delta_time) - 0.5*9.8*(delta_time)**2
+            bomb.y += bomb.vy*(delta_time)
+            bomb.vy -= 36*9.8*(delta_time)
+
+            for zombie in zombies:
+                if (bomb.box[0] < zombie.box[0] + zombie.box[1]  and
+                bomb.box[0] + bomb.box[1] > zombie.box[0]  and
+                bomb.box[2] < zombie.box[2] + zombie.box[3] and
+                bomb.box[2] + bomb.box[3] > zombie.box[2]):
+                    zombie.hp -= 1
+                    if bomb in bombs:
+                        bombs.remove(bomb)
+                    if zombie.hp == 0:
+                        score += 1
+                        zombies.remove(zombie)
+                        print(f'SCORE: {score}')
+
+            if bomb.x > 650 or bomb.y < -220:
+                if bomb in bombs:
+                    bombs.remove(bomb)
+
+            # TBD: BOMB BOUNCE
+            # if bomb.y < -220:
+                # bomb.vy = -0.8*bomb.vy
+                # if bomb.vy < 5:
+                #     if bomb in bombs:
+                #         bombs.remove(bomb)
+
+        if (10 - difficulty)>3:
+            difficulty += 0.0001
+
+    if pause_state == True:
+        # for preserving the time difference between each zombie
+        current_time = time.time()
+        first_time = current_time - time_diff
 
     glutPostRedisplay()
 
@@ -333,7 +345,7 @@ def specialKeyListener(key, x, y):
     glutPostRedisplay()
 
 def mouseListener(button, state, x, y):   
-    global pause, pause_state, resume, restart, exit, throw_state, bombs, new_bomb
+    global pause_state, show_bounds, throw_state, bombs, new_bomb, zombies, first_time, game_over_state, score, delta_time, difficulty, time_diff, pause, resume, restart, exit, man, shield, max_shield
 
     mouse_x = x - 650
     mouse_y = 350 - y
@@ -347,41 +359,68 @@ def mouseListener(button, state, x, y):
     if button==GLUT_LEFT_BUTTON:
         if state == GLUT_DOWN:
 
-            if throw_state == False:
-                if ((mouse_x)>=man.box[0]) and ((mouse_x)<=(man.box[0]+man.box[1])) and ((mouse_y)>=man.box[2]) and ((mouse_y)<=(man.box[2]+man.box[3])):
-                    throw_state = True
-                    bomb = Pivot(mouse_x, mouse_y, 10)
-                    new_bomb = bomb
-            else:
-                throw_state = False
-                # x is adjacent, y is opposite
+            if pause_state == False and game_over_state == False:
 
-                # adj = new_bomb.x - man.x
-                # if adj == 0:
-                #     adj = 0.00000001
-                # theta = math.atan2((new_bomb.y-man.y)/adj)
+                if throw_state == False:
+                    if ((mouse_x)>=man.box[0]) and ((mouse_x)<=(man.box[0]+man.box[1])) and ((mouse_y)>=man.box[2]) and ((mouse_y)<=(man.box[2]+man.box[3])):
+                        throw_state = True
+                        bomb = Pivot(mouse_x, mouse_y, 10)
+                        new_bomb = bomb
+                else:
+                    throw_state = False
+                    # x is adjacent, y is opposite
 
-                # apparently atan2 handles 0 error internally
-                theta = math.atan2(abs(new_bomb.y - man.y), abs(new_bomb.x - man.x))
-                new_bomb.vx = new_bomb.vx * math.cos(theta)
-                new_bomb.vy = new_bomb.vy * math.sin(theta)
-                bombs.append(new_bomb)
-                new_bomb = None
+                    # adj = new_bomb.x - man.x
+                    # if adj == 0:
+                    #     adj = 0.00000001
+                    # theta = math.atan2((new_bomb.y-man.y), adj)
 
-            if ((mouse_x)>=pause.box[0]) and ((mouse_x)<=(pause.box[0]+pause.box[1])) and ((mouse_y)>=pause.box[2]) and ((mouse_y)<=(pause.box[2]+pause.box[3])):
-                # pause
-                pause_state = True
+                    # apparently atan2 handles 0 error internally
+                    theta = math.atan2(abs(new_bomb.y - man.y), abs(new_bomb.x - man.x))
+                    new_bomb.vx = new_bomb.vx * math.cos(theta)
+                    new_bomb.vy = new_bomb.vy * math.sin(theta)
+                    bombs.append(new_bomb)
+                    new_bomb = None
 
-            if pause_state == True:
-                if ((mouse_x)>=resume.box[0]) and ((mouse_x)<=(resume.box[0]+resume.box[1])) and ((mouse_y)>=resume.box[2]) and ((mouse_y)<=(resume.box[2]+resume.box[3])):
-                    # resume
-                    # print("RESUME")
-                    pause_state = False
+                if ((mouse_x)>=pause.box[0]) and ((mouse_x)<=(pause.box[0]+pause.box[1])) and ((mouse_y)>=pause.box[2]) and ((mouse_y)<=(pause.box[2]+pause.box[3])):
+                    # pause
+                    pause_state = True
+                    time_diff = time.time() - first_time
+                
 
-                elif ((mouse_x)>=restart.box[0]) and ((mouse_x)<=(restart.box[0]+restart.box[1])) and ((mouse_y)>=restart.box[2]) and ((mouse_y)<=(restart.box[2]+restart.box[3])):
+            if pause_state == True or game_over_state == True:
+                if pause_state == True:
+                    if ((mouse_x)>=resume.box[0]) and ((mouse_x)<=(resume.box[0]+resume.box[1])) and ((mouse_y)>=resume.box[2]) and ((mouse_y)<=(resume.box[2]+resume.box[3])):
+                        # resume
+                        # print("RESUME")
+                        pause_state = False
+
+                if ((mouse_x)>=restart.box[0]) and ((mouse_x)<=(restart.box[0]+restart.box[1])) and ((mouse_y)>=restart.box[2]) and ((mouse_y)<=(restart.box[2]+restart.box[3])):
                     # restart
                     # print("RESTART")
-                    pass
+                    pause_state = False
+                    show_bounds = False
+                    throw_state = False
+                    bombs = []
+                    new_bomb = None
+                    zombies = []
+                    first_time = time.time()
+                    game_over_state = False
+                    score = 0
+                    print(f'SCORE: {score}')
+                    delta_time = 0.005
+
+                    difficulty = 0
+                    time_diff = 0
+
+                    pause = Pivot(0, 310)
+                    resume = Pivot(0, 100)
+                    restart = Pivot(0, 0)
+                    exit = Pivot(0, -100)
+                    man = Pivot(-425, -185)
+                    shield = Pivot(-350, -185)
+                    shield.hp = 3
+                    max_shield = 3
 
                 elif ((mouse_x)>=exit.box[0]) and ((mouse_x)<=(exit.box[0]+exit.box[1])) and ((mouse_y)>=exit.box[2]) and ((mouse_y)<=(exit.box[2]+exit.box[3])):
                     # exit
@@ -434,7 +473,7 @@ def showScreen():
         glPointSize(2)
         glColor3f(255/255, 255/255, 255/255)
         glColor3f(63/255, 152/255, 69/255)
-        shield.box = [shield.x-25, 50, shield.y-35, 70]
+        shield.box = [shield.x, 25, shield.y-35, 70]
         if show_bounds == True:
             draw_quad(shield.box[0], shield.box[2], shield.box[0], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2])
 
@@ -470,7 +509,7 @@ def showScreen():
 
     
     # PAUSE BUTTON
-    if pause_state == False:
+    if pause_state == False and game_over_state == False:
         glColor3f(255/255, 255/255, 255/255)
     else:
         glColor3f(107/255, 107/255, 107/255)
@@ -486,14 +525,62 @@ def showScreen():
     resume.box = [resume.x-202, 404, resume.y-50, 102]
     restart.box = [restart.x-202, 404, restart.y-49, 98]
     exit.box = [exit.x-202, 404, exit.y-52, 100]
-    if pause_state == True:
-        # RESUME BUTTON
-        glColor3f(255/255, 255/255, 255/255)
-        draw_quad(resume.x-200, resume.y-50, resume.x-200, resume.y+50, resume.x+200, resume.y+50, resume.x+200, resume.y-50)
-        draw_triangle(resume.x-30, resume.y-30, resume.x-30, resume.y+30, resume.x+30, resume.y)
-        glColor3f(63/255, 152/255, 69/255)
-        if show_bounds == True:
-            draw_quad(resume.box[0], resume.box[2], resume.box[0], resume.box[2]+resume.box[3], resume.box[0]+resume.box[1], resume.box[2]+resume.box[3], resume.box[0]+resume.box[1], resume.box[2])
+    if pause_state == True or game_over_state == True:
+        if pause_state == True:
+            # RESUME BUTTON
+            glColor3f(255/255, 255/255, 255/255)
+            draw_quad(resume.x-200, resume.y-50, resume.x-200, resume.y+50, resume.x+200, resume.y+50, resume.x+200, resume.y-50)
+            draw_triangle(resume.x-30, resume.y-30, resume.x-30, resume.y+30, resume.x+30, resume.y)
+            glColor3f(63/255, 152/255, 69/255)
+            if show_bounds == True:
+                draw_quad(resume.box[0], resume.box[2], resume.box[0], resume.box[2]+resume.box[3], resume.box[0]+resume.box[1], resume.box[2]+resume.box[3], resume.box[0]+resume.box[1], resume.box[2])
+
+        if game_over_state == True:
+            # GAME OVER
+            # Define gaps for positioning(wrote the letters myself but 
+            # positioning was done using CHATGPT)
+            gap_game = -20  # Horizontal adjustment for "GAME"
+            gap_over = -20    # Extra horizontal space between "GAME" and "OVER"
+
+            # G
+            glColor3f(255/255, 255/255, 255/255)
+            draw_line(-260 + gap_game, 160, -215 + gap_game, 160)
+            draw_line(-260 + gap_game, 160, -260 + gap_game, 65)
+            draw_line(-260 + gap_game, 65, -215 + gap_game, 65)
+            draw_line(-215 + gap_game, 65, -215 + gap_game, 110)
+            draw_line(-215 + gap_game, 110, -235 + gap_game, 110)
+            # A
+            draw_line(-180 + gap_game, 160, -135 + gap_game, 160)
+            draw_line(-135 + gap_game, 160, -135 + gap_game, 65)
+            draw_line(-180 + gap_game, 160, -180 + gap_game, 65)
+            draw_line(-180 + gap_game, 110, -135 + gap_game, 110)
+            # M
+            draw_line(-110 + gap_game, 160, -110 + gap_game, 65)
+            draw_line(-65 + gap_game, 160, -65 + gap_game, 65)
+            draw_line(-110 + gap_game, 160, -87.5 + gap_game, 110)
+            draw_line(-87.5 + gap_game, 110, -65 + gap_game, 160)
+            # E
+            draw_line(-40 + gap_game, 160, -40 + gap_game, 65)
+            draw_line(-40 + gap_game, 160, 5 + gap_game, 160)
+            draw_line(-40 + gap_game, 110, 5 + gap_game, 110)
+            draw_line(-40 + gap_game, 65, 5 + gap_game, 65)
+
+            # O
+            draw_quad(70 + gap_over, 160, 70 + gap_over, 65, 115 + gap_over, 65, 115 + gap_over, 160)
+            # V
+            draw_line(140 + gap_over, 160, 165 + gap_over, 65)
+            draw_line(165 + gap_over, 65, 190 + gap_over, 160)
+            # E
+            draw_line(215 + gap_over, 160, 215 + gap_over, 65)
+            draw_line(215 + gap_over, 160, 260 + gap_over, 160)
+            draw_line(215 + gap_over, 110, 260 + gap_over, 110)
+            draw_line(215 + gap_over, 65, 260 + gap_over, 65)
+            # R
+            draw_line(285 + gap_over, 160, 285 + gap_over, 65)
+            draw_line(285 + gap_over, 160, 330 + gap_over, 160)
+            draw_line(285 + gap_over, 110, 330 + gap_over, 110)
+            draw_line(330 + gap_over, 160, 330 + gap_over, 110)
+            draw_line(285 + gap_over, 110, 330 + gap_over, 65)
 
 
         # RESTART BUTTON
