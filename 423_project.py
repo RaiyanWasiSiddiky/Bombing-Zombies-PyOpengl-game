@@ -250,25 +250,29 @@ def animate():
         bomb.y += bomb.vy*(delta_time)
         bomb.vy -= 36*9.8*(delta_time)
 
-        if bomb.x > 600 or bomb.y < -220:
-            bombs.remove(bomb)
-
-        # if bomb.y < -220:
-            # bomb.vy = -0.8*bomb.vy
-            # if bomb.vy < 5:
-            #     bombs.remove(bomb)
-
         for zombie in zombies:
             if (bomb.box[0] < zombie.box[0] + zombie.box[1]  and
             bomb.box[0] + bomb.box[1] > zombie.box[0]  and
             bomb.box[2] < zombie.box[2] + zombie.box[3] and
             bomb.box[2] + bomb.box[3] > zombie.box[2]):
                 zombie.hp -= 1
-                bombs.remove(bomb)
+                if bomb in bombs:
+                    bombs.remove(bomb)
                 if zombie.hp == 0:
                     score += 1
                     zombies.remove(zombie)
                     print(f'SCORE: {score}')
+
+        if bomb.x > 600 or bomb.y < -220:
+            if bomb in bombs:
+                bombs.remove(bomb)
+
+        # TBD: BOMB BOUNCE
+        # if bomb.y < -220:
+            # bomb.vy = -0.8*bomb.vy
+            # if bomb.vy < 5:
+            #     if bomb in bombs:
+            #         bombs.remove(bomb)
 
     glutPostRedisplay()
 
