@@ -223,7 +223,7 @@ def animate():
         if (current_time - first_time)>=(10 - difficulty): # difficulty
             if prob<0.15:
                 # fast zombies
-                zombie = Pivot(660, -185)
+                zombie = Pivot(680, -185)
                 zombie.box = [zombie.x-30, 60, zombie.y-35, 50]
                 zombie.hp = 1
                 zombie.special = 1
@@ -231,7 +231,7 @@ def animate():
             
             elif 0.15<prob<0.3:
                 # tanky zombies
-                zombie = Pivot(660, -185)
+                zombie = Pivot(690, -185)
                 zombie.box = [zombie.x-40, 80, zombie.y-35, 100]
                 zombie.hp = 2
                 zombie.special = 2
@@ -239,7 +239,7 @@ def animate():
 
             else:
                 # normal zombies
-                zombie = Pivot(660, -185)
+                zombie = Pivot(675, -185)
                 zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
                 zombie.hp = 1
                 zombie.special = 0
@@ -248,7 +248,7 @@ def animate():
             first_time = current_time
 
         if score!=0 and score%15==0 and boss_spawn == False:
-            boss = Pivot(660, -185)
+            boss = Pivot(710, -185)
             boss.box = [boss.x-60, 120, boss.y-35, 150]
             boss.hp = 4 + score//15
             boss.special = 3
@@ -697,7 +697,7 @@ def showScreen():
 glutInit()
 glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGB)
 glutInitWindowSize(WIDTH, HEIGHT) #window size
-glutInitWindowPosition(110, 55)
+glutInitWindowPosition(110, 28)
 wind = glutCreateWindow(b"423 PROJECT ZOMBBOMBS") #window name
 glutDisplayFunc(showScreen)
 
