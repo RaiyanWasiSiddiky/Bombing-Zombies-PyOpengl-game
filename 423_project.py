@@ -39,6 +39,9 @@ delta_time = 0.005
 
 difficulty = 0
 time_diff = 0
+boss_spawn = False
+spikes = False
+spikes_time = 0
 
 
 # box = [x, width, y, height]
@@ -60,6 +63,7 @@ resume = Pivot(0, 100)
 restart = Pivot(0, 0)
 exit = Pivot(0, -100)
 man = Pivot(-425, -185)
+
 shield = Pivot(-350, -185)
 shield.hp = 3
 max_shield = 3
@@ -210,16 +214,17 @@ def iterate():
     glLoadIdentity()
 
 def animate():
-    global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state, shield, delta_time, score, difficulty, time_diff
+    global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state
+    global shield, delta_time, score, difficulty, time_diff, boss_spawn, spikes, spikes_time
 
-    prob = random.random()
-    current_time = time.time()
-    if (current_time - first_time)>=(10 - difficulty): # difficulty
-        if pause_state == False and game_over_state == False:
+    if pause_state == False and game_over_state == False:
+        prob = random.random()
+        current_time = time.time()
+        if (current_time - first_time)>=(10 - difficulty): # difficulty
             if prob<0.15:
                 # fast zombies
                 zombie = Pivot(660, -185)
-                zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
+                zombie.box = [zombie.x-30, 60, zombie.y-35, 50]
                 zombie.hp = 1
                 zombie.special = 1
                 zombie.speed = 1
@@ -227,9 +232,9 @@ def animate():
             elif 0.15<prob<0.3:
                 # tanky zombies
                 zombie = Pivot(660, -185)
-                zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
+                zombie.box = [zombie.x-40, 80, zombie.y-35, 100]
                 zombie.hp = 2
-                zombie.special = 0
+                zombie.special = 2
                 zombie.speed = 0.1
 
             else:
@@ -242,19 +247,46 @@ def animate():
             zombies.append(zombie)
             first_time = current_time
 
-    if pause_state == False and game_over_state == False:
+        if score!=0 and score%15==0 and boss_spawn == False:
+            boss = Pivot(660, -185)
+            boss.box = [boss.x-60, 120, boss.y-35, 150]
+            boss.hp = 4 + score//15
+            boss.special = 3
+            boss.speed = 0.05
+            zombies.append(boss)
+            boss_spawn = True
+
+        if score%15==1:
+            boss_spawn = False
+
+
         if zombies != []:
             for zombie in zombies:
                 zombie.x -= zombie.speed
 
                 if zombie.box[0] < shield.box[0]+shield.box[1]:
-                    zombies.remove(zombie)
-                    shield.hp -= 1
+                    spikes = True
+                    spikes_time = time.time()
+
+                    if zombie.special == 3:
+                        shield.hp = 0
+                        zombie.hp -= 1
+                        if zombie.hp == 0:
+                            score += 5
+                            zombies.remove(zombie)
+                            print(f'SCORE: {score}')
+                    else:
+                        zombies.remove(zombie)
+                        score += 1
+                        print(f'SCORE: {score}')
+                        shield.hp -= 1
+
                     if shield.hp == 0:
                         shield.box = [-1000, 0, -1000, 0]
                         # game_over_state = True
                         # print("GAME OVER")
                         # print(f'SCORE: {score}')
+
                 if zombie.box[0] < man.box[0]+man.box[1]:
                     # strange bug where minimizing the window results in collision of zombie with
                     # both man and shield, causing shield to lose hp and game over
@@ -280,7 +312,10 @@ def animate():
                     if bomb in bombs:
                         bombs.remove(bomb)
                     if zombie.hp == 0:
-                        score += 1
+                        if zombie.special == 3:
+                            score += 5
+                        else:
+                            score += 1
                         zombies.remove(zombie)
                         print(f'SCORE: {score}')
 
@@ -302,6 +337,10 @@ def animate():
         # for preserving the time difference between each zombie
         current_time = time.time()
         first_time = current_time - time_diff
+
+    if spikes == True:
+        if (time.time() - spikes_time) > 1:
+            spikes = False
 
     glutPostRedisplay()
 
@@ -352,7 +391,9 @@ def specialKeyListener(key, x, y):
     glutPostRedisplay()
 
 def mouseListener(button, state, x, y):   
-    global pause_state, show_bounds, throw_state, bombs, new_bomb, zombies, first_time, game_over_state, score, delta_time, difficulty, time_diff, pause, resume, restart, exit, man, shield, max_shield
+    global pause_state, show_bounds, throw_state, bombs, new_bomb, zombies, first_time
+    global game_over_state, score, delta_time, difficulty, time_diff, pause, resume, restart
+    global exit, man, shield, max_shield, boss_spawn, spikes, spikes_time
 
     mouse_x = x - 650
     mouse_y = 350 - y
@@ -420,6 +461,10 @@ def mouseListener(button, state, x, y):
                     difficulty = 0
                     time_diff = 0
 
+                    boss_spawn = False
+                    spikes = False
+                    spikes_time = 0
+
                     pause = Pivot(0, 310)
                     resume = Pivot(0, 100)
                     restart = Pivot(0, 0)
@@ -441,7 +486,8 @@ def mouseListener(button, state, x, y):
     glutPostRedisplay()
 
 def showScreen():
-    global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb, zombies, throw_state, max_shield
+    global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb
+    global zombies, throw_state, max_shield, spikes, shield, game_over_state
 
     # background
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -472,27 +518,61 @@ def showScreen():
     if shield.hp != 0:
         glColor3f(255/255, 255/255, 255/255)
         draw_triangle(shield.x-25, shield.y-35, shield.x+25, shield.y+35, shield.x+25, shield.y-35)
+
+        # SHIELD HP BAR
         draw_quad(shield.x-30, shield.y+40, shield.x-30, shield.y+50, shield.x+30, shield.y+50, shield.x+30, shield.y+40)
         glPointSize(10)
         glColor3f(63/255, 152/255, 69/255)
         # print(shield.x-25, shield.x+(25-((max_shield-shield.hp)*(50/shield.hp))))
         draw_line(shield.x-25, shield.y+45, shield.x+(25-((max_shield-shield.hp)*(50/max_shield))), shield.y+45)
+        
+        # SHIELD BOUNDING BOX
         glPointSize(2)
-        glColor3f(255/255, 255/255, 255/255)
         glColor3f(63/255, 152/255, 69/255)
         shield.box = [shield.x, 25, shield.y-35, 70]
         if show_bounds == True:
             draw_quad(shield.box[0], shield.box[2], shield.box[0], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2]+shield.box[3], shield.box[0]+shield.box[1], shield.box[2])
 
+    # SPIKES
+    if spikes == True:
+        glColor3f(255/255, 0/255, 0/255)
+        draw_triangle(shield.x+25, shield.y+35, shield.x+50, shield.y+23.33, shield.x+25, shield.y+11.67)
+        draw_triangle(shield.x+25, shield.y+11.67, shield.x+50, shield.y, shield.x+25, shield.y-11.67)
+        draw_triangle(shield.x+25, shield.y-11.67, shield.x+50, shield.y-23.33, shield.x+25, shield.y-35)
+        glColor3f(255/255, 255/255, 255/255)
+
     # ZOMBIES
     glColor3f(255/255, 255/255, 255/255)
     if zombies != []:
         for zombie in zombies:
-            draw_quad(zombie.x-25, zombie.y-35, zombie.x-25, zombie.y+35, zombie.x+25, zombie.y+35, zombie.x+25, zombie.y-35)
-            zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
-            if show_bounds == True:
-                glColor3f(63/255, 152/255, 69/255)
-                draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
+            if zombie.special == 0:
+                # regular zombies
+                draw_quad(zombie.x-25, zombie.y-35, zombie.x-25, zombie.y+35, zombie.x+25, zombie.y+35, zombie.x+25, zombie.y-35)
+                zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
+                if show_bounds == True:
+                    glColor3f(63/255, 152/255, 69/255)
+                    draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
+            elif zombie.special == 1:
+                # fast zombies
+                draw_quad(zombie.x-30, zombie.y-35, zombie.x-30, zombie.y+15, zombie.x+30, zombie.y+15, zombie.x+30, zombie.y-35)
+                zombie.box = [zombie.x-30, 60, zombie.y-35, 50]
+                if show_bounds == True:
+                    glColor3f(63/255, 152/255, 69/255)
+                    draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
+            elif zombie.special == 2:
+                # tanky zombies
+                draw_quad(zombie.x-40, zombie.y-35, zombie.x-40, zombie.y+65, zombie.x+40, zombie.y+65, zombie.x+40, zombie.y-35)
+                zombie.box = [zombie.x-40, 80, zombie.y-35, 100]
+                if show_bounds == True:
+                    glColor3f(63/255, 152/255, 69/255)
+                    draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
+            elif zombie.special == 3:
+                # boss zombies
+                draw_quad(zombie.x-60, zombie.y-35, zombie.x-60, zombie.y+115, zombie.x+60, zombie.y+115, zombie.x+60, zombie.y-35)
+                zombie.box = [zombie.x-60, 120, zombie.y-35, 150]
+                if show_bounds == True:
+                    glColor3f(63/255, 152/255, 69/255)
+                    draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
             glColor3f(255/255, 255/255, 255/255)
 
     # BOMB CREATION
