@@ -42,7 +42,12 @@ time_diff = 0
 boss_spawn = False
 spikes = False
 spikes_time = 0
-
+hp_boost = 0
+hp_change = False
+hp_time = 0
+color_up = False
+cg, cb, cr = 255, 255, 255
+boss_time = 0
 
 # box = [x, width, y, height]
 # box here basically does the AABB collision functionality using bounding boxes
@@ -216,24 +221,25 @@ def iterate():
 def animate():
     global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state
     global shield, delta_time, score, difficulty, time_diff, boss_spawn, spikes, spikes_time
+    global hp_change, hp_boost, hp_time, boss_time
 
     if pause_state == False and game_over_state == False:
         prob = random.random()
         current_time = time.time()
         if (current_time - first_time)>=(10 - difficulty): # difficulty
-            if prob<0.15:
+            if prob<0.15+hp_boost/2:
                 # fast zombies
                 zombie = Pivot(680, -185)
                 zombie.box = [zombie.x-30, 60, zombie.y-35, 50]
-                zombie.hp = 1
+                zombie.hp = 1 
                 zombie.special = 1
                 zombie.speed = 1
             
-            elif 0.15<prob<0.3:
+            elif 0.15+hp_boost/2<prob<0.3+hp_boost:
                 # tanky zombies
                 zombie = Pivot(690, -185)
                 zombie.box = [zombie.x-40, 80, zombie.y-35, 100]
-                zombie.hp = 2
+                zombie.hp = 2 + hp_boost
                 zombie.special = 2
                 zombie.speed = 0.1
 
@@ -241,7 +247,7 @@ def animate():
                 # normal zombies
                 zombie = Pivot(675, -185)
                 zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
-                zombie.hp = 1
+                zombie.hp = 1 + hp_boost
                 zombie.special = 0
                 zombie.speed = 0.2
             zombies.append(zombie)
@@ -250,14 +256,12 @@ def animate():
         if score!=0 and score%15==0 and boss_spawn == False:
             boss = Pivot(710, -185)
             boss.box = [boss.x-60, 120, boss.y-35, 150]
-            boss.hp = 4 + score//15
+            boss.hp = 4 + score//15 + hp_boost
             boss.special = 3
             boss.speed = 0.05
             zombies.append(boss)
             boss_spawn = True
-
-        if score%15==1:
-            boss_spawn = False
+            boss_time = time.time()
 
 
         if zombies != []:
@@ -292,7 +296,7 @@ def animate():
                     # both man and shield, causing shield to lose hp and game over
                     game_over_state = True
                     print("GAME OVER")
-                    print(f'SCORE: {score}')
+                    print(f'FINAL SCORE: {score}')
 
 
         for bomb in bombs:
@@ -331,7 +335,12 @@ def animate():
                 #         bombs.remove(bomb)
 
         if (10 - difficulty)>3:
-            difficulty += 0.0001
+            difficulty += 0.00005
+
+        if (score > 4 and score % 50 in {0, 1, 2, 3, 4} and not hp_change):
+            hp_boost += 1
+            hp_change = True
+            hp_time = time.time()
 
     if pause_state == True:
         # for preserving the time difference between each zombie
@@ -341,6 +350,17 @@ def animate():
     if spikes == True:
         if (time.time() - spikes_time) > 1:
             spikes = False
+
+    if hp_change == True:
+        if (time.time() - hp_time) > 5:
+            if (score % 50) not in {0, 1, 2, 3, 4}:
+                hp_change = False
+
+    if boss_spawn == True:
+        if (time.time() - boss_time) > 7:
+            if score%15!=0:
+                boss_spawn = False
+
 
     glutPostRedisplay()
 
@@ -393,7 +413,8 @@ def specialKeyListener(key, x, y):
 def mouseListener(button, state, x, y):   
     global pause_state, show_bounds, throw_state, bombs, new_bomb, zombies, first_time
     global game_over_state, score, delta_time, difficulty, time_diff, pause, resume, restart
-    global exit, man, shield, max_shield, boss_spawn, spikes, spikes_time
+    global exit, man, shield, max_shield, boss_spawn, spikes, spikes_time, hp_boost, hp_change
+    global color_up, cg, cb, cr, boss_time
 
     mouse_x = x - 650
     mouse_y = 350 - y
@@ -464,6 +485,11 @@ def mouseListener(button, state, x, y):
                     boss_spawn = False
                     spikes = False
                     spikes_time = 0
+                    hp_boost = 0
+                    hp_change = False
+                    color_up = False
+                    cg, cb, cr = 255, 255, 255
+                    boss_time = 0
 
                     pause = Pivot(0, 310)
                     resume = Pivot(0, 100)
@@ -477,6 +503,8 @@ def mouseListener(button, state, x, y):
                 elif ((mouse_x)>=exit.box[0]) and ((mouse_x)<=(exit.box[0]+exit.box[1])) and ((mouse_y)>=exit.box[2]) and ((mouse_y)<=(exit.box[2]+exit.box[3])):
                     # exit
                     # print("EXIT")
+                    print("GAME OVER")
+                    print(f'FINAL SCORE: {score}')
                     glutLeaveMainLoop() 
 
         elif state == GLUT_UP:
@@ -487,7 +515,8 @@ def mouseListener(button, state, x, y):
 
 def showScreen():
     global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb
-    global zombies, throw_state, max_shield, spikes, shield, game_over_state
+    global zombies, throw_state, max_shield, spikes, shield, game_over_state, hp_change
+    global color_up, cg, cb, cr, boss_spawn
 
     # background
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -540,6 +569,85 @@ def showScreen():
         draw_triangle(shield.x+25, shield.y+11.67, shield.x+50, shield.y, shield.x+25, shield.y-11.67)
         draw_triangle(shield.x+25, shield.y-11.67, shield.x+50, shield.y-23.33, shield.x+25, shield.y-35)
         glColor3f(255/255, 255/255, 255/255)
+
+    if boss_spawn == True:
+        # SKULL AND BONES
+        if cg == 255 and cb == 255 and cr == 255:
+            color_up = False
+        if cg == 0 and cb == 0  and cr == 0:
+            color_up = True
+        if color_up == False:
+            cg, cb, cr = cg-1, cb-1, cr-1
+        else:
+            cg, cb, cr = cg+1, cb+1, cr+1
+
+        glColor3f(cg/255, cb/255, cr/255)
+        # SKULL
+        draw_circle(-18, 165, 10)
+        draw_circle(18, 165, 10)
+        draw_triangle(-10, 130, 10, 130, 0, 145)
+        draw_line(-25, 200, 25, 200)
+        draw_line(-25, 200, -40, 170)
+        draw_line(25, 200, 40, 170)
+        draw_line(-40, 170, -40, 140)
+        draw_line(40, 170, 40, 140)
+        draw_line(-40, 140, -25, 140)
+        draw_line(40, 140, 25, 140)
+        draw_line(-25, 140, -25, 110)
+        draw_line(25, 140, 25, 110)
+        draw_line(-25, 110, -12.5, 125)
+        draw_line(25, 110, 12.5, 125)
+        draw_line(-12.5, 125, 0, 110)
+        draw_line(12.5, 125, 0, 110)
+        # BONES
+        # Top-Left Bone
+        draw_line(-35, 185, -63, 207)
+        draw_line(-38, 175, -70, 195)
+        draw_line(-63, 207, -70, 195)
+
+        # Top-Right Bone
+        draw_line(35, 185, 63, 207)
+        draw_line(38, 175, 70, 195)
+        draw_line(63, 207, 70, 195)
+
+        # Bottom-Left Bone
+        draw_line(-25, 125, -63, 93)
+        draw_line(-28, 135, -70, 105)
+        draw_line(-63, 93, -70, 105)
+
+        # Bottom-Right Bone
+        draw_line(25, 125, 63, 93)
+        draw_line(28, 135, 70, 105)
+        draw_line(63, 93, 70, 105)
+
+    if hp_change == True:
+        glColor3f(255/255, 255/255, 255/255)
+        gap_hp = 40  # Horizontal adjustment for "HP"
+        gap_up = 0   # Horizontal adjustment for "UP"
+
+        # H
+        draw_line(-200 + gap_hp, 160, -200 + gap_hp, 65)
+        draw_line(-150 + gap_hp, 160, -150 + gap_hp, 65)
+        draw_line(-200 + gap_hp, 110, -150 + gap_hp, 110)
+
+        # P
+        draw_line(-125 + gap_hp, 160, -125 + gap_hp, 65)
+        draw_line(-125 + gap_hp, 160, -80 + gap_hp, 160)
+        draw_line(-80 + gap_hp, 160, -80 + gap_hp, 110)
+        draw_line(-80 + gap_hp, 110, -125 + gap_hp, 110)
+
+        # U
+        draw_line(20 + gap_up, 160, 20 + gap_up, 65)
+        draw_line(20 + gap_up, 65, 65 + gap_up, 65)
+        draw_line(65 + gap_up, 160, 65 + gap_up, 65)
+
+        # P
+        draw_line(90 + gap_up, 160, 90 + gap_up, 65)
+        draw_line(90 + gap_up, 160, 135 + gap_up, 160)
+        draw_line(135 + gap_up, 160, 135 + gap_up, 110)
+        draw_line(135 + gap_up, 110, 90 + gap_up, 110)
+
+    
 
     # ZOMBIES
     glColor3f(255/255, 255/255, 255/255)
