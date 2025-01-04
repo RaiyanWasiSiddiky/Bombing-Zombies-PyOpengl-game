@@ -48,32 +48,23 @@ hp_time = 0
 color_up = False
 cg, cb, cr = 255, 255, 255
 boss_time = 0
+
+
+yellow_ball = None
 yellow_quantity = 0
-last_yellow_ball_spawn_time = 10
+last_yellow_ball_spawn_time = time.time()
+
 green_ball = None 
-last_green_ball_spawn_time = 0  # Track the last spawn time of the green ball
-green_ball_spawn_interval = random.uniform(3, 10) 
+last_green_ball_spawn_time = time.time()  # Track the last spawn time of the green ball
+
 red_ball = None
-red_ball_spawn_interval = random.uniform(10, 20)  # Set a random interval for the red ball to spawn
-last_red_ball_spawn_time = 0  # Track the last spawn time of the red ball
-
-
-
-class Ball:
-    def __init__(self, x, y,speed):
-        self.x = x
-        self.y = y
-        self.radius = random.uniform(10, 30)
-        self.speed = speed  # Speed at which the ball moves towards the player
-
+last_red_ball_spawn_time = time.time()  # Track the last spawn time of the red ball
 
 
 def draw_text(x, y, text):
     glRasterPos2f(x, y)
     for char in text:
         glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, ord(char))
-
-
 
 
 
@@ -101,10 +92,13 @@ shield = Pivot(-350, -185)
 shield.hp = 3
 max_shield = 3
 
+
+
 def draw_point(x, y):
     glBegin(GL_POINTS)
     glVertex2f(x,y) 
     glEnd()
+
 
 # convert is for going back to zone 0
 # it is in the form - swap, xneg, yneg
@@ -161,30 +155,6 @@ def find_and_convert_zone(x1, y1, x2, y2):
             convert = [True, False, True]
 
     return x1, y1, x2, y2, convert
-
-def draw_ninja_star(x, y, size):
-    """Draws a ninja star at (x, y) with the specified size."""
-    glBegin(GL_LINES)
-    for i in range(4):  # 4 blades
-        angle1 = math.pi / 4 + i * math.pi / 2  # Start angle for each blade
-        angle2 = angle1 + math.pi / 4          # End angle for each blade
-
-        # Outer tip of the blade
-        x1 = x + size * math.cos(angle1)
-        y1 = y + size * math.sin(angle1)
-
-        # Inner tip of the blade
-        x2 = x + (size / 2) * math.cos(angle2)
-        y2 = y + (size / 2) * math.sin(angle2)
-
-        # Draw the two lines forming the blade
-        glVertex2f(x, y)
-        glVertex2f(x1, y1)
-
-        glVertex2f(x1, y1)
-        glVertex2f(x2, y2)
-
-    glEnd()
         
 
 def draw_line(x1, y1, x2, y2):
@@ -258,6 +228,141 @@ def draw_circle(x0, y0, radius):
         x_temp += 1
     glEnd()
 
+def draw_ninja_star(x, y, size):
+    """Draws a ninja star at (x, y) with the specified size using gl_points."""
+    for i in range(4):  # 4 blades
+        # Calculate angles for each blade
+        angle1 = math.pi / 4 + i * math.pi / 2  # Start angle for each blade
+        angle2 = angle1 + math.pi / 4          # End angle for each blade
+
+        # Outer tip of the blade
+        x1 = x + size * math.cos(angle1)
+        y1 = y + size * math.sin(angle1)
+
+        # Inner tip of the blade
+        x2 = x + (size / 2) * math.cos(angle2)
+        y2 = y + (size / 2) * math.sin(angle2)
+
+        # Center point
+        cx, cy = x, y
+
+        # Draw blade as a quadrilateral using the draw_line function
+        draw_triangle(cx, cy, x1, y1, x2, y2)
+
+    # Optionally, draw a central circle or a small square to represent the hub
+    # Example: a circle at the center
+    draw_circle(x, y, size / 10)  # A small circle in the center
+
+def draw_player(x, y):
+    """Draws a cooler ninja-style player character at (x, y)."""
+    # Head with ninja mask
+    glColor3f(1.0, 1.0, 1.0)  # Dark gray/black for ninja mask
+    draw_circle(x, y + 35, 12)  # Larger head for a bold look
+
+    # Mask covering lower face
+    glColor3f(0.2, 0.2, 0.2)
+    draw_quad(x - 7, y + 30, x - 7, y + 35, x + 7, y + 35, x + 7, y + 30)  # Mouth cover
+
+    # Bandana on head with flowing ties
+    glColor3f(1.0, 0.0, 0.0)  # Red for bandana
+    draw_quad(x - 10, y + 38, x - 10, y + 42, x + 10, y + 42, x + 10, y + 38)  # Headband front
+    draw_triangle(x + 10, y + 42, x + 18, y + 48, x + 12, y + 44)  # Right tie
+    draw_triangle(x - 10, y + 42, x - 18, y + 48, x - 12, y + 44)  # Left tie
+
+    # Eyes with fierce expression
+    glColor3f(1.0, 1.0, 1.0)  # White for eyes
+    draw_quad(x - 5, y + 36, x - 5, y + 39, x - 1, y + 39, x - 1, y + 36)  # Left eye
+    draw_quad(x + 1, y + 36, x + 1, y + 39, x + 5, y + 39, x + 5, y + 36)  # Right eye
+
+    # Arms in ready-to-attack pose
+    glColor3f(1.0, 1.0, 1.0)
+    # draw_line(x, y + 15, x - 15, y + 10)  # Left arm raised
+    # draw_line(x, y + 15, x + 15, y + 10)  # Right arm lowered
+
+    # Body (muscular torso)
+    draw_quad(x - 8, y + 20, x - 8, y - 20, x + 8, y - 20, x + 8, y + 20)
+
+    # Legs with a dynamic stance
+    draw_line(x, y - 20, x - 10, y - 35)  # Left leg stepping back
+    draw_line(x, y - 20, x + 12, y - 35)  # Right leg ready to spring forward
+
+def draw_normal_zombie(x, y):
+    """Draws a cool-looking normal zombie at (x, y)."""
+    glColor3f(0.3, 0.8, 0.3)  # Sickly green for zombie skin
+    draw_circle(x, y + 35, 12)  # Head
+    glColor3f(0.1, 0.1, 0.1)  # Dark gray for sunken eyes
+    draw_quad(x - 4, y + 38, x - 4, y + 41, x - 1, y + 41, x - 1, y + 38)  # Left eye
+    draw_quad(x + 1, y + 38, x + 1, y + 41, x + 4, y + 41, x + 4, y + 38)  # Right eye
+    glColor3f(1.0, 0.0, 0.0)  # Red for bloody mouth
+    draw_triangle(x - 3, y + 30, x + 3, y + 30, x, y + 25)  # Mouth
+    glColor3f(0.4, 0.2, 0.2)  # Tattered clothes
+    draw_quad(x - 10, y + 20, x - 10, y - 20, x + 10, y - 20, x + 10, y + 20)
+    glColor3f(0.3, 0.8, 0.3)  # Arms with claws
+    draw_line(x - 10, y + 10, x - 18, y + 5)  # Left arm
+    draw_line(x + 10, y + 10, x + 18, y + 5)  # Right arm
+    draw_line(x - 18, y + 5, x - 20, y + 3)  # Left claw
+    draw_line(x + 18, y + 5, x + 20, y + 3)  # Right claw
+
+def draw_fast_zombie(x, y):
+    """Draws a fast, feral zombie at (x, y)."""
+    glColor3f(0.2, 0.7, 0.2)  # Dark green for decayed skin
+    draw_circle(x, y + 30, 10)  # Small head
+    glColor3f(0.8, 0.1, 0.1)  # Blood red eyes
+    draw_circle(x - 3, y + 32, 2)  # Left eye
+    draw_circle(x + 3, y + 32, 2)  # Right eye
+    glColor3f(0.3, 0.3, 0.3)  # Torn clothes
+    draw_quad(x - 7, y + 15, x - 7, y - 15, x + 7, y - 15, x + 7, y + 15)
+    glColor3f(0.2, 0.7, 0.2)  # Thin arms and legs
+    draw_line(x, y + 5, x - 10, y)  # Left arm
+    draw_line(x, y + 5, x + 10, y)  # Right arm
+
+def draw_slow_zombie(x, y):
+    """Draws a tanky zombie at (x, y)."""
+    glColor3f(0.4, 0.7, 0.4)  # Greenish-gray for tough skin
+    draw_circle(x, y + 40, 15)  # Large head
+    glColor3f(1.0, 1.0, 1.0)  # Armor patches
+    draw_quad(x - 30, y + 20, x - 30, y - 20, x + 30, y - 20, x + 30, y + 20)
+    draw_quad(x - 10, y - 5, x - 10, y - 10, x + 10, y - 10, x + 10, y - 5)  # Stomach armor
+    glColor3f(0.4, 0.7, 0.4)  # Thick arms and legs
+    draw_line(x - 15, y + 10, x - 20, y)  # Left arm
+    draw_line(x + 15, y + 10, x + 20, y)  # Right arm
+    draw_line(x - 10, y - 20, x - 15, y - 50)  # Left leg
+    draw_line(x + 10, y - 20, x + 15, y - 50)  # Right leg
+
+def draw_zombie_boss(x, y):
+    """Draws a larger and more menacing zombie boss at (x, y)."""
+    # Massive head with glowing eyes
+    glColor3f(0.1, 0.1, 0.1)  # Dark gray for shadowy skin
+    draw_circle(x, y + 70, 25)  # Larger head for boss
+
+    glColor3f(1.0, 0.0, 0.0)  # Bright red for glowing eyes
+    draw_circle(x - 10, y + 75, 5)  # Left eye
+    draw_circle(x + 10, y + 75, 5)  # Right eye
+
+    glColor3f(0.0, 0.0, 0.0)  # Black for fanged mouth
+    draw_triangle(x - 7, y + 62, x + 7, y + 62, x, y + 55)  # Open mouth
+
+    # Large torso with spikes
+    glColor3f(0.4, 0.2, 0.2)  # Dark armor
+    draw_quad(x - 50, y + 40, x - 50, y - 40, x + 50, y - 40, x + 50, y + 40)
+
+    glColor3f(0.5, 0.1, 0.1)  # Spikes
+    draw_triangle(x - 35, y + 35, x - 25, y + 50, x - 35, y + 65)  # Left upper spike
+    draw_triangle(x + 35, y + 35, x + 25, y + 50, x + 35, y + 65)  # Right upper spike
+    draw_triangle(x - 35, y - 15, x - 25, y - 5, x - 35, y + 5)  # Left lower spike
+    draw_triangle(x + 35, y - 15, x + 25, y - 5, x + 35, y + 5)  # Right lower spike
+
+    # Arms with claws
+    glColor3f(0.1, 0.1, 0.1)
+    draw_line(x - 30, y + 10, x - 45, y)  # Left arm
+    draw_line(x + 30, y + 10, x + 45, y)  # Right arm
+    draw_line(x - 45, y, x - 50, y - 5)  # Left claw
+    draw_line(x + 45, y, x + 50, y - 5)  # Right claw
+
+    # Thick legs in a sturdy stance
+    draw_line(x, y - 40, x - 20, y - 80)  # Left leg
+    draw_line(x, y - 40, x + 20, y - 80)  # Right leg
+
 
 
 def iterate():
@@ -270,132 +375,114 @@ def iterate():
     glMatrixMode (GL_MODELVIEW)
     glLoadIdentity()
 
+
 def animate():
-    global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state, red_ball, red_ball_spawn_interval,last_red_ball_spawn_time
+    global new_bomb, bombs, man, zombies, first_time, pause_state, game_over_state
     global shield, delta_time, score, difficulty, time_diff, boss_spawn, spikes, spikes_time
-    global hp_change, hp_boost, hp_time, boss_time
-    global yellow_ball, yellow_quantity,last_yellow_ball_spawn_time,green_ball,last_green_ball_spawn_time,green_ball_spawn_interval
+    global hp_change, hp_boost, hp_time, boss_time, max_shield
+
+    global yellow_ball, yellow_quantity, last_yellow_ball_spawn_time
+    global last_green_ball_spawn_time, green_ball
+    global red_ball, last_red_ball_spawn_time
   
 
     if pause_state == False and game_over_state == False:
         prob = random.random()
         current_time = time.time()
-        
-        
 
-       # Check if 10 seconds have passed since the last yellow ball spawn
-        if current_time - last_yellow_ball_spawn_time >= random.uniform(60, 70):
-            # Reset the yellow ball's position to its initial position
-            yellow_ball.x = 650  # Set to the desired spawn position
-            yellow_ball.y = -185  # Set to the desired spawn position
-            last_yellow_ball_spawn_time = current_time  # Update the last spawn time
+        if yellow_ball is None:
+            # Check if 60 seconds have passed since the last yellow ball spawn
+            if current_time - last_yellow_ball_spawn_time >= 60:
+                yellow_ball = Pivot(650, -185, 10)
+                last_yellow_ball_spawn_time = current_time  # Update the last spawn time
 
         # Move the yellow ball towards the player
-        if yellow_ball.x > man.x:
-            yellow_ball.x -= yellow_ball.speed
-        elif yellow_ball.x < man.x:
-            yellow_ball.x += yellow_ball.speed
+        elif yellow_ball is not None:
+            yellow_ball.x -= 2
 
+            # Check for collision with bombs
+            for bomb in bombs:
+                if (bomb.box[0] < yellow_ball.box[0] + yellow_ball.box[1]  and
+                bomb.box[0] + bomb.box[1] > yellow_ball.box[0]  and
+                bomb.box[2] < yellow_ball.box[2] + yellow_ball.box[3] and
+                bomb.box[2] + bomb.box[3] > yellow_ball.box[2]):
+                    # Bomb hits the yellow ball
+                    yellow_quantity += 1
+                    yellow_ball = None
+                    break
 
-
-
-
-        # Check for collision with the player
-        if (yellow_ball.x - yellow_ball.radius < man.box[0] + man.box[1] and
-            yellow_ball.x + yellow_ball.radius > man.box[0] and
-            yellow_ball.y - yellow_ball.radius < man.box[2] + man.box[3] and
-            yellow_ball.y + yellow_ball.radius > man.box[2]):
-            # Ball hits the player
-            yellow_ball.x = -1000  # Move the ball off-screen
-            yellow_ball.y = -1000
-            # No action needed when the ball hits the player
-
-        # Check for collision with bombs
-        for bomb in bombs:
-            if (bomb.x - bomb.radius < yellow_ball.x + yellow_ball.radius and
-                bomb.x + bomb.radius > yellow_ball.x - yellow_ball.radius and
-                bomb.y - bomb.radius < yellow_ball.y + yellow_ball.radius and
-                bomb.y + bomb.radius > yellow_ball.y - yellow_ball.radius):
-                # Bomb hits the yellow ball
-                yellow_quantity += 1
-                yellow_ball.x = -1000  # Move the ball off-screen
-                yellow_ball.y = -1000
-                break  # Exit the loop after hitting the ball
+            # DOES NOT DAMAGE OR KILL
+            if yellow_ball is not None:
+                if yellow_ball.x < -650:  # Assuming -650 is the left of your window
+                    yellow_ball = None  # Remove the yellow ball after it goes off-screen
 
 
 
         # Red ball
         if red_ball is None:
-            current_time = time.time()  # Get the current time
 
             # Check if enough time has passed to spawn a new red ball
-            if current_time - last_red_ball_spawn_time >= red_ball_spawn_interval:
-                red_ball = Ball(random.randint(-600, 600), 350, 0.5)  # Spawn at a random x-coordinate at the top
+            if current_time - last_red_ball_spawn_time >= 40:
+                red_ball = Pivot(random.randint(-600, 600), 360, 10)  # Spawn at a random x-coordinate at the top
                 last_red_ball_spawn_time = current_time  # Update the last spawn time
-                red_ball_spawn_interval = random.uniform(10, 20)  # Set a new random interval for the next spawn
 
         # Move the red ball down
-        if red_ball is not None:
-            red_ball.y -= red_ball.speed
-
-            if red_ball.y < -250:  # Assuming -350 is the bottom of your window
-                red_ball = None  # Remove the red ball after it goes off-screen
+        elif red_ball is not None:
+            red_ball.y -= 0.5
 
             # Check for collision with bombs
             for bomb in bombs:
-                if (bomb.x - bomb.radius < red_ball.x + red_ball.radius and
-                    bomb.x + bomb.radius > red_ball.x - red_ball.radius and
-                    bomb.y - bomb.radius < red_ball.y + red_ball.radius and
-                    bomb.y + bomb.radius > red_ball.y - red_ball.radius):
+                if (bomb.box[0] < red_ball.box[0] + red_ball.box[1]  and
+                bomb.box[0] + bomb.box[1] > red_ball.box[0]  and
+                bomb.box[2] < red_ball.box[2] + red_ball.box[3] and
+                bomb.box[2] + bomb.box[3] > red_ball.box[2]):
                     # Bomb hits the red ball
                     shield.hp -= 1
                     red_ball = None  # Remove the red ball after it is hit
                     break  # Exit the loop after hitting the ball
 
-            # Check for collision with the shield
-            if (red_ball.x - red_ball.radius < shield.box[0] + shield.box[1] and
-                red_ball.x + red_ball.radius > shield.box[0] and
-                red_ball.y - red_ball.radius < shield.box[2] + shield.box[3] and
-                red_ball.y + red_ball.radius > shield.box[2]):
-                # Red ball hits the shield
-                shield.hp = 0  # Set the shield's HP to 0
-                red_ball = None  # Remove the red ball after it hits the shield
+                if shield.hp == 0:
+                    shield.box = [-1000, 0, -1000, 0]
+                    # game_over_state = True
+                    # print("GAME OVER")
+                    # print(f'SCORE: {score}')
+
+            if red_ball is not None:
+                if red_ball.y < -220:  
+                    red_ball = None  # Remove the red ball after it goes off-screen
 
 
-#green ball
+
+        #green ball
         if green_ball is None:
-            current_time = time.time()  # Get the current time
 
             # Check if enough time has passed to spawn a new green ball
-            if current_time - last_green_ball_spawn_time >= green_ball_spawn_interval:
-                green_ball = Ball(random.randint(-600, 600), 350, 0.5 )  # Spawn at a random x-coordinate at the top
+            if current_time - last_green_ball_spawn_time >= 100:
+                green_ball = Pivot(random.randint(-600, 600), 350, 10)  # Spawn at a random x-coordinate at the top
                 last_green_ball_spawn_time = current_time  # Update the last spawn time
-                green_ball_spawn_interval = random.uniform(30,50)  # Set a new random interval for the next spawn
 
         # Move the green ball down
-        if green_ball is not None:
-            green_ball.y -= green_ball.speed
-
-            if green_ball.y < -250:  # Assuming -350 is the bottom of your window
-                green_ball = None 
-
+        elif green_ball is not None:
+            green_ball.y -= 0.5
        
             # Check for collision with bombs
             for bomb in bombs:
-                if (bomb.x - bomb.radius < green_ball.x + green_ball.radius and
-                    bomb.x + bomb.radius > green_ball.x - green_ball.radius and
-                    bomb.y - bomb.radius < green_ball.y + green_ball.radius and
-                    bomb.y + bomb.radius > green_ball.y - green_ball.radius):
+                if (bomb.box[0] < green_ball.box[0] + green_ball.box[1]  and
+                bomb.box[0] + bomb.box[1] > green_ball.box[0]  and
+                bomb.box[2] < green_ball.box[2] + green_ball.box[3] and
+                bomb.box[2] + bomb.box[3] > green_ball.box[2]):
                     if shield.hp<max_shield:
                         shield.hp += 1  # Increase shield health
+
+                    else:
+                        pass
                     green_ball = None  # Remove the green ball after it is hit
                     break  # Exit the loop after hitting the bal
- 
-             # Exit the loop after hitting the ball
+
+            if green_ball is not None:
+                if green_ball.y < -220:  # Assuming -350 is the bottom of your window
+                    green_ball = None 
   
-
-
-
 
 
         if (current_time - first_time)>=(10 - difficulty): # difficulty
@@ -425,7 +512,7 @@ def animate():
             zombies.append(zombie)
             first_time = current_time
 
-        if score!=0 and score%15==0 and boss_spawn == False:
+        if score%15==0 and boss_spawn == False:
             boss = Pivot(710, -185)
             boss.box = [boss.x-60, 120, boss.y-35, 150]
             boss.hp = 4 + score//15 + hp_boost
@@ -507,7 +594,7 @@ def animate():
                 #         bombs.remove(bomb)
 
         if (10 - difficulty)>3:
-            difficulty += 0.00005
+            difficulty += 0.00004
 
         if (score > 4 and score % 50 in {0, 1, 2, 3, 4} and not hp_change):
             hp_boost += 1
@@ -533,8 +620,9 @@ def animate():
             if score%15!=0:
                 boss_spawn = False
 
-
     glutPostRedisplay()
+
+
 
 def mouseMotionListener(x, y):
     global throw_state, man, new_bomb
@@ -597,6 +685,9 @@ def mouseListener(button, state, x, y):
     global game_over_state, score, delta_time, difficulty, time_diff, pause, resume, restart
     global exit, man, shield, max_shield, boss_spawn, spikes, spikes_time, hp_boost, hp_change
     global color_up, cg, cb, cr, boss_time
+
+    global yellow_ball, yellow_quantity, last_yellow_ball_spawn_time, green_ball
+    global last_green_ball_spawn_time, red_ball, last_red_ball_spawn_time
 
     mouse_x = x - 650
     mouse_y = 350 - y
@@ -673,6 +764,14 @@ def mouseListener(button, state, x, y):
                     cg, cb, cr = 255, 255, 255
                     boss_time = 0
 
+                    yellow_ball = None
+                    yellow_quantity = 0
+                    last_yellow_ball_spawn_time = time.time()
+                    green_ball = None 
+                    last_green_ball_spawn_time = time.time()  # Track the last spawn time of the green ball
+                    red_ball = None
+                    last_red_ball_spawn_time = time.time()  # Track the last spawn time of the red ball
+
                     pause = Pivot(0, 310)
                     resume = Pivot(0, 100)
                     restart = Pivot(0, 0)
@@ -696,9 +795,11 @@ def mouseListener(button, state, x, y):
     glutPostRedisplay()
 
 def showScreen():
-    global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb,red_ball_spawn_interval,last_red_ball_spawn_time
+    global R, G, B, pause, pause_state, resume, restart, exit, show_bounds, man, bombs, new_bomb
     global zombies, throw_state, max_shield, spikes, shield, game_over_state, hp_change
-    global color_up, cg, cb, cr, boss_spawn, yellow_ball
+    global color_up, cg, cb, cr, boss_spawn
+    
+    global yellow_ball, red_ball, green_ball, yellow_quantity
 
     # background
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -715,21 +816,32 @@ def showScreen():
 
 
     # Draw the yellow ball if it's on-screen
+    if yellow_ball is not None:
+        glColor3f(1.0, 1.0, 0.0)  # Yellow color
+        draw_circle(yellow_ball.x, yellow_ball.y, yellow_ball.radius)
+        glColor3f(63/255, 152/255, 69/255)
+        yellow_ball.box = [yellow_ball.x-10, 20, yellow_ball.y-10, 20]
+        if show_bounds == True:
+            draw_quad(yellow_ball.box[0], yellow_ball.box[2], yellow_ball.box[0], yellow_ball.box[2]+yellow_ball.box[3], yellow_ball.box[0]+yellow_ball.box[1], yellow_ball.box[2]+yellow_ball.box[3], yellow_ball.box[0]+yellow_ball.box[1], yellow_ball.box[2])
 
-    glColor3f(1.0, 1.0, 0.0)  # Yellow color
-    draw_circle(yellow_ball.x, yellow_ball.y, yellow_ball.radius)
-
-
-    glColor3f(1.0, 1.0, 0.0)  # Yellow color
-    draw_point(0, 300)  # Draw the yellow point at the top center
 
     if red_ball is not None:
         glColor3f(1.0, 0.0, 0.0)  # Red color
         draw_circle(red_ball.x, red_ball.y, red_ball.radius)
+        glColor3f(63/255, 152/255, 69/255)
+        red_ball.box = [red_ball.x-10, 20, red_ball.y-10, 20]
+        if show_bounds == True:
+            draw_quad(red_ball.box[0], red_ball.box[2], red_ball.box[0], red_ball.box[2]+red_ball.box[3], red_ball.box[0]+red_ball.box[1], red_ball.box[2]+red_ball.box[3], red_ball.box[0]+red_ball.box[1], red_ball.box[2])
+
 
     if green_ball is not None:
         glColor3f(0.0, 1.0, 0.0)  # Green color
         draw_circle(green_ball.x, green_ball.y, green_ball.radius)
+        glColor3f(63/255, 152/255, 69/255)
+        green_ball.box = [green_ball.x-10, 20, green_ball.y-10, 20]
+        if show_bounds == True:
+            draw_quad(green_ball.box[0], green_ball.box[2], green_ball.box[0], green_ball.box[2]+green_ball.box[3], green_ball.box[0]+green_ball.box[1], green_ball.box[2]+green_ball.box[3], green_ball.box[0]+green_ball.box[1], green_ball.box[2])
+
 
     # Draw the yellow quantity text
     glColor3f(1.0, 1.0, 0.0)  # Yellow superpower
@@ -745,7 +857,8 @@ def showScreen():
 
     # MAN
     glColor3f(255/255, 255/255, 255/255)
-    draw_quad(man.x-25, man.y-35, man.x-25, man.y+35, man.x+25, man.y+35, man.x+25, man.y-35)
+    # draw_quad(man.x-25, man.y-35, man.x-25, man.y+35, man.x+25, man.y+35, man.x+25, man.y-35)
+    draw_player(man.x, man.y)
     glColor3f(63/255, 152/255, 69/255)
     man.box = [man.x-70, 100, man.y-35, 140]
     if show_bounds == True:
@@ -863,28 +976,32 @@ def showScreen():
         for zombie in zombies:
             if zombie.special == 0:
                 # regular zombies
-                draw_quad(zombie.x-25, zombie.y-35, zombie.x-25, zombie.y+35, zombie.x+25, zombie.y+35, zombie.x+25, zombie.y-35)
+                draw_normal_zombie(zombie.x, zombie.y-15)
+                # draw_quad(zombie.x-25, zombie.y-35, zombie.x-25, zombie.y+35, zombie.x+25, zombie.y+35, zombie.x+25, zombie.y-35)
                 zombie.box = [zombie.x-25, 50, zombie.y-35, 70]
                 if show_bounds == True:
                     glColor3f(63/255, 152/255, 69/255)
                     draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
             elif zombie.special == 1:
                 # fast zombies
-                draw_quad(zombie.x-30, zombie.y-35, zombie.x-30, zombie.y+15, zombie.x+30, zombie.y+15, zombie.x+30, zombie.y-35)
+                draw_fast_zombie(zombie.x, zombie.y-25)
+                # draw_quad(zombie.x-30, zombie.y-35, zombie.x-30, zombie.y+15, zombie.x+30, zombie.y+15, zombie.x+30, zombie.y-35)
                 zombie.box = [zombie.x-30, 60, zombie.y-35, 50]
                 if show_bounds == True:
                     glColor3f(63/255, 152/255, 69/255)
                     draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
             elif zombie.special == 2:
                 # tanky zombies
-                draw_quad(zombie.x-40, zombie.y-35, zombie.x-40, zombie.y+65, zombie.x+40, zombie.y+65, zombie.x+40, zombie.y-35)
+                draw_slow_zombie(zombie.x, zombie.y+10)
+                # draw_quad(zombie.x-40, zombie.y-35, zombie.x-40, zombie.y+65, zombie.x+40, zombie.y+65, zombie.x+40, zombie.y-35)
                 zombie.box = [zombie.x-40, 80, zombie.y-35, 100]
                 if show_bounds == True:
                     glColor3f(63/255, 152/255, 69/255)
                     draw_quad(zombie.box[0], zombie.box[2], zombie.box[0], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2]+zombie.box[3], zombie.box[0]+zombie.box[1], zombie.box[2])
             elif zombie.special == 3:
                 # boss zombies
-                draw_quad(zombie.x-60, zombie.y-35, zombie.x-60, zombie.y+115, zombie.x+60, zombie.y+115, zombie.x+60, zombie.y-35)
+                draw_zombie_boss(zombie.x, zombie.y+20)
+                # draw_quad(zombie.x-60, zombie.y-35, zombie.x-60, zombie.y+115, zombie.x+60, zombie.y+115, zombie.x+60, zombie.y-35)
                 zombie.box = [zombie.x-60, 120, zombie.y-35, 150]
                 if show_bounds == True:
                     glColor3f(63/255, 152/255, 69/255)
@@ -896,8 +1013,8 @@ def showScreen():
     if new_bomb != None:
         draw_ninja_star(new_bomb.x, new_bomb.y, new_bomb.radius)
         if throw_state == True:
-            draw_line(man.x-25, man.y+35, new_bomb.x, new_bomb.y)
-            draw_line(man.x-25, man.y+15, new_bomb.x, new_bomb.y)
+            draw_line(man.x-10, man.y+15, new_bomb.x, new_bomb.y)
+            draw_line(man.x-10, man.y, new_bomb.x, new_bomb.y)
 
     # BOMBS
     if bombs != []:
@@ -1024,9 +1141,6 @@ glutSpecialFunc(specialKeyListener)
 glutMouseFunc(mouseListener)
 
 glutPassiveMotionFunc(mouseMotionListener)
-yellow_ball = Ball(650, -185,0.5)
-
-
 
 glutMainLoop()
 
