@@ -161,6 +161,30 @@ def find_and_convert_zone(x1, y1, x2, y2):
             convert = [True, False, True]
 
     return x1, y1, x2, y2, convert
+
+def draw_ninja_star(x, y, size):
+    """Draws a ninja star at (x, y) with the specified size."""
+    glBegin(GL_LINES)
+    for i in range(4):  # 4 blades
+        angle1 = math.pi / 4 + i * math.pi / 2  # Start angle for each blade
+        angle2 = angle1 + math.pi / 4          # End angle for each blade
+
+        # Outer tip of the blade
+        x1 = x + size * math.cos(angle1)
+        y1 = y + size * math.sin(angle1)
+
+        # Inner tip of the blade
+        x2 = x + (size / 2) * math.cos(angle2)
+        y2 = y + (size / 2) * math.sin(angle2)
+
+        # Draw the two lines forming the blade
+        glVertex2f(x, y)
+        glVertex2f(x1, y1)
+
+        glVertex2f(x1, y1)
+        glVertex2f(x2, y2)
+
+    glEnd()
         
 
 def draw_line(x1, y1, x2, y2):
@@ -870,7 +894,7 @@ def showScreen():
     # BOMB CREATION
     glColor3f(255/255, 255/255, 255/255)
     if new_bomb != None:
-        draw_circle(new_bomb.x, new_bomb.y, new_bomb.radius)
+        draw_ninja_star(new_bomb.x, new_bomb.y, new_bomb.radius)
         if throw_state == True:
             draw_line(man.x-25, man.y+35, new_bomb.x, new_bomb.y)
             draw_line(man.x-25, man.y+15, new_bomb.x, new_bomb.y)
@@ -878,7 +902,7 @@ def showScreen():
     # BOMBS
     if bombs != []:
         for bomb in bombs:
-            draw_circle(bomb.x, bomb.y, bomb.radius)
+            draw_ninja_star(bomb.x, bomb.y, bomb.radius)
             glColor3f(63/255, 152/255, 69/255)
             bomb.box = [bomb.x-bomb.radius, 2*bomb.radius, bomb.y-bomb.radius, 2*bomb.radius]
             if show_bounds == True:
